@@ -1,121 +1,108 @@
-# Simple Diff - Enhanced Text Comparison Tool
+# Dev Tools Suite - Svelte Version
 
-A modern, web-based text and file comparison tool with syntax highlighting, built on [CodeMirror](https://github.com/codemirror/CodeMirror), [jsdiff](https://github.com/kpdecker/jsdiff), and [diff2html](https://github.com/rtfpessoa/diff2html).
+A modern, web-based development tools suite built with SvelteKit and TypeScript. This is a complete rebuild of the original simple-diff project using modern web technologies.
 
-## ✨ Features
+## Features
 
-- **Modern UI**: Clean, responsive design that works on desktop and mobile
-- **File Upload**: Compare files directly by uploading them
-- **Syntax Highlighting**: Support for JavaScript, TypeScript, CSS, HTML, Markdown, Python, C/C++/Java, and more
-- **Multiple View Modes**: Side-by-side and inline diff views
-- **Real-time Statistics**: Line counts and diff statistics (additions/deletions)
-- **Responsive Design**: Optimized for all screen sizes
-- **Docker Support**: Easy deployment with Docker and docker-compose
+### Text Diff Tool
+- Side-by-side and inline text comparison
+- Syntax highlighting for multiple languages (JavaScript, TypeScript, CSS, HTML, Markdown, Python, Java, C/C++)
+- File upload support
+- Live line count display
+- Diff statistics (additions/deletions)
 
-## 🚀 Quick Start
+### Base64 Encoder/Decoder
+- Encode text to Base64
+- Decode Base64 to text
+- Copy-to-clipboard functionality
 
-### Local Development
+### JavaScript Minifier/Beautifier
+- Minify JavaScript code
+- Beautify/format JavaScript code
+- Syntax highlighting with CodeMirror
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/ruivalim/simple-diff.git
-   cd simple-diff
-   ```
+### CSS Minifier/Beautifier  
+- Minify CSS code
+- Beautify/format CSS code
+- Syntax highlighting with CodeMirror
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+### JSON Formatter
+- Format JSON with proper indentation
+- Minify JSON
+- Validate JSON syntax
+- Error reporting for invalid JSON
 
-3. **Start development server**
-   ```bash
-   npm run dev
-   ```
-   Open http://localhost:3000 in your browser
+## Technologies Used
 
-4. **Build for production**
-   ```bash
-   npm run build
-   ```
+- **SvelteKit** - Modern web framework
+- **TypeScript** - Type-safe JavaScript
+- **CodeMirror 6** - Advanced code editor
+- **diff2html** - Beautiful diff visualization
+- **Vite** - Fast build tool
 
-### Docker Deployment
+## Development
 
-#### Using Docker directly
+### Prerequisites
+- Node.js 18+ 
+- npm
 
-1. **Build the image**
-   ```bash
-   npm run docker:build
-   ```
+### Setup
+```bash
+npm install
+```
 
-2. **Run the container**
-   ```bash
-   npm run docker:run
-   ```
-   Access the app at http://localhost:8080
+### Development Server
+```bash
+npm run dev
+```
 
-#### Using Docker Compose
+### Build for Production
+```bash
+npm run build
+```
 
-1. **Production deployment**
-   ```bash
-   npm run docker:prod
-   ```
+### Preview Production Build
+```bash
+npm run preview
+```
 
-2. **Development with hot reload**
-   ```bash
-   npm run docker:dev
-   ```
+## Project Structure
 
-## 📖 Usage
+```
+src/
+├── app.css                 # Global styles
+├── app.html               # HTML template
+├── lib/
+│   └── components/        # Svelte components
+│       ├── Header.svelte
+│       ├── Sidebar.svelte
+│       ├── DiffTool.svelte
+│       ├── Base64Tool.svelte
+│       ├── JSMinifierTool.svelte
+│       ├── CSSMinifierTool.svelte
+│       └── JSONFormatterTool.svelte
+└── routes/
+    ├── +layout.svelte     # Layout component
+    └── +page.svelte       # Main page
+```
 
-1. **Text Input**: Type or paste text directly into the left and right panels
-2. **File Upload**: Use the file upload buttons to load files for comparison
-3. **Syntax Highlighting**: Select the appropriate language from the dropdown for syntax highlighting
-4. **View Options**: Toggle between side-by-side and inline diff views
-5. **Compare**: Click the "Compare" button to generate the diff
-6. **Clear**: Use the "Clear" button to reset both panels
+## Features Comparison
 
-## 🛠️ Available Scripts
+| Feature | Original | Svelte Version |
+|---------|----------|----------------|
+| Text Diff | ✅ | ✅ |
+| Base64 Encode/Decode | ✅ | ✅ |
+| JS Minify/Beautify | ✅ | ✅ |
+| CSS Minify/Beautify | ✅ | ✅ |
+| JSON Format/Validate | ✅ | ✅ |
+| Framework | Vanilla JS | SvelteKit |
+| Build Tool | esbuild | Vite |
+| Code Editor | CodeMirror 5 | CodeMirror 6 |
+| TypeScript | ✅ | ✅ |
+| Responsive Design | ✅ | ✅ |
+| File Upload | ✅ | ✅ |
+| Syntax Highlighting | ✅ | ✅ |
 
-- `npm run build` - Build for production
-- `npm run dev` - Start development server with hot reload
-- `npm run clean` - Clean build directory
-- `npm run release` - Create release package
-- `npm run docker:build` - Build Docker image
-- `npm run docker:run` - Run Docker container
-- `npm run docker:dev` - Development with Docker Compose
-- `npm run docker:prod` - Production deployment with Docker Compose
+## License
 
-## 🎯 Supported File Types
-
-- **JavaScript** (.js)
-- **TypeScript** (.ts)
-- **CSS** (.css)
-- **HTML** (.html)
-- **Markdown** (.md)
-- **Python** (.py)
-- **Java** (.java)
-- **C/C++** (.c, .cpp, .h)
-- **Plain Text** (.txt)
-
-## 🐳 Docker Information
-
-The application uses a multi-stage Docker build:
-- **Build stage**: Compiles TypeScript and bundles assets
-- **Production stage**: Serves the app with nginx
-- **Health checks**: Built-in health monitoring
-- **Security headers**: Configured with security best practices
-
-## 🔧 Technologies Used
-
-- **Frontend**: TypeScript, CodeMirror, diff2html
-- **Build**: esbuild
-- **Server**: nginx (for Docker deployment)
-- **Containerization**: Docker & Docker Compose
-
-## 📝 License
-
-MIT License - see LICENSE file for details
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+MIT License
