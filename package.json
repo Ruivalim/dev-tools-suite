@@ -1,10 +1,26 @@
 {
   "name": "simple-diff",
-  "version": "0.0.1",
+  "version": "1.0.0",
+  "description": "A modern, web-based text and file comparison tool with syntax highlighting",
+  "main": "dist/index.js",
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --minify --outdir=dist",
-    "release": "zip simple-diff-$npm_package_version.zip index.html dist/*"
+    "build": "esbuild src/index.ts --bundle --minify --outdir=dist --sourcemap",
+    "dev": "esbuild src/index.ts --bundle --outdir=dist --sourcemap --watch --servedir=.",
+    "clean": "rm -rf dist/*",
+    "release": "npm run clean && npm run build && zip simple-diff-$npm_package_version.zip index.html dist/* README.md",
+    "docker:build": "docker build -t simple-diff:latest .",
+    "docker:run": "docker run -p 8080:80 simple-diff:latest",
+    "docker:dev": "docker-compose --profile dev up --build",
+    "docker:prod": "docker-compose up --build -d"
   },
+  "keywords": ["diff", "comparison", "text", "file", "web", "codemirror", "syntax-highlighting"],
+  "author": "Simple Diff Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ruivalim/simple-diff.git"
+  },
+  "homepage": "https://github.com/ruivalim/simple-diff",
   "dependencies": {
     "codemirror": "^5.61.0",
     "diff": "^5.0.0",
@@ -13,7 +29,7 @@
   "devDependencies": {
     "@types/codemirror": "^5.60.0",
     "@types/diff": "^5.0.0",
-    "esbuild": "^0.11.23",
+    "esbuild": "^0.25.6",
     "typescript": "^4.2.4"
   }
 }
