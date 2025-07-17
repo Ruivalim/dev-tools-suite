@@ -104,15 +104,15 @@
 		flex: 1;
 		display: flex;
 		flex-direction: column;
-		border: 1px solid #dee2e6;
+		border: 1px solid var(--border-color);
 		border-radius: 8px;
 		overflow: hidden;
 	}
 
 	.panel-header {
-		background: #f8f9fa;
+		background: var(--surface-background);
 		padding: 1rem;
-		border-bottom: 1px solid #dee2e6;
+		border-bottom: 1px solid var(--border-color);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -124,7 +124,7 @@
 		margin: 0;
 		font-size: 1rem;
 		font-weight: 600;
-		color: #495057;
+		color: var(--text-primary);
 	}
 
 	.minifier-controls {
@@ -142,10 +142,12 @@
 		line-height: 1.4;
 		resize: none;
 		outline: none;
+		background: var(--card-background);
+		color: var(--text-primary);
 	}
 
 	textarea[readonly] {
-		background: #f8f9fa;
+		background: var(--surface-background);
 	}
 
 	@media (max-width: 768px) {

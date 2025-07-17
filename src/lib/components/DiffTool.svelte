@@ -109,7 +109,7 @@
 		const patch = Diff.createPatch('diff', leftText, rightText);
 		const stats = calculateDiffStats(patch);
 		
-		diffStats = `<span style="color: #28a745;">+${stats.additions}</span> <span style="color: #dc3545;">-${stats.deletions}</span>`;
+		diffStats = `<span class="diff-add">+${stats.additions}</span> <span class="diff-remove">-${stats.deletions}</span>`;
 		
 		const diff2htmlUi = new Diff2HtmlUI(diffContainer, patch, {
 			drawFileList: false,
@@ -293,12 +293,12 @@
 	}
 
 	.controls-panel {
-		background: white;
+		background: var(--card-background);
 		border-radius: 12px;
 		padding: 1.5rem;
 		margin-bottom: 1.5rem;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-		border: 1px solid #e9ecef;
+		box-shadow: 0 2px 8px var(--shadow-card);
+		border: 1px solid var(--border-color);
 	}
 
 	.file-upload-section {
@@ -317,7 +317,7 @@
 		display: block;
 		font-weight: 600;
 		margin-bottom: 0.5rem;
-		color: #495057;
+		color: var(--text-primary);
 	}
 
 	.diff-options {
@@ -335,7 +335,7 @@
 
 	.option-label {
 		font-weight: 500;
-		color: #495057;
+		color: var(--text-primary);
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
@@ -348,10 +348,10 @@
 		gap: 1rem;
 		margin: 1.5rem 0;
 		padding: 1rem;
-		background: white;
+		background: var(--card-background);
 		border-radius: 12px;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-		border: 1px solid #e9ecef;
+		box-shadow: 0 2px 8px var(--shadow-card);
+		border: 1px solid var(--border-color);
 	}
 
 	.text-container {
@@ -362,17 +362,17 @@
 
 	.text-panel {
 		flex: 1;
-		background: white;
-		border: 1px solid #dee2e6;
+		background: var(--card-background);
+		border: 1px solid var(--border-color);
 		border-radius: 12px;
 		overflow: hidden;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 2px 8px var(--shadow-card);
 	}
 
 	.text-header {
-		background: #f8f9fa;
+		background: var(--surface-background);
 		padding: 0.75rem 1rem;
-		border-bottom: 1px solid #dee2e6;
+		border-bottom: 1px solid var(--border-color);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -380,14 +380,14 @@
 
 	.text-title {
 		font-weight: 600;
-		color: #495057;
+		color: var(--text-primary);
 		font-size: 14px;
 	}
 
 	.text-info {
 		font-size: 12px;
-		color: #6c757d;
-		background: #e9ecef;
+		color: var(--text-muted);
+		background: var(--surface-background);
 		padding: 0.25rem 0.5rem;
 		border-radius: 4px;
 	}
@@ -398,17 +398,17 @@
 	}
 
 	.diff-section {
-		background: white;
+		background: var(--card-background);
 		border-radius: 12px;
 		overflow: hidden;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-		border: 1px solid #e9ecef;
+		box-shadow: 0 2px 8px var(--shadow-card);
+		border: 1px solid var(--border-color);
 	}
 
 	.diff-header {
-		background: #f8f9fa;
+		background: var(--surface-background);
 		padding: 1rem 1.5rem;
-		border-bottom: 1px solid #dee2e6;
+		border-bottom: 1px solid var(--border-color);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -418,18 +418,29 @@
 		margin: 0;
 		font-size: 1.25rem;
 		font-weight: 600;
-		color: #495057;
+		color: var(--text-primary);
 	}
 
 	.diff-stats {
 		font-size: 12px;
-		color: #6c757d;
+		color: var(--text-muted);
 		display: flex;
 		gap: 1rem;
 	}
 
 	.diff-container {
+    color: #131212;
 		overflow: visible;
+	}
+
+	:global(.diff-add) {
+		color: var(--success);
+		font-weight: 600;
+	}
+
+	:global(.diff-remove) {
+		color: var(--error);
+		font-weight: 600;
 	}
 
 	@media (max-width: 768px) {

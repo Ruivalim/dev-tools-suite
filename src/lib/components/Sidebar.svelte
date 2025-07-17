@@ -39,23 +39,23 @@
 <style>
 	.sidebar {
 		width: 250px;
-		background: white;
-		border-right: 1px solid #dee2e6;
-		box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+		background: var(--surface-background);
+		border-right: 1px solid var(--border-color);
+		box-shadow: 2px 0 5px var(--shadow-card);
 		flex-shrink: 0;
 	}
 
 	.sidebar-header {
 		padding: 1.5rem;
-		border-bottom: 1px solid #dee2e6;
-		background: #f8f9fa;
+		border-bottom: 1px solid var(--border-color);
+		background: var(--card-background);
 	}
 
 	.sidebar-header h3 {
 		margin: 0;
 		font-size: 1.1rem;
 		font-weight: 600;
-		color: #495057;
+		color: var(--text-primary);
 	}
 
 	.tool-list {
@@ -65,7 +65,7 @@
 	}
 
 	.tool-list li {
-		border-bottom: 1px solid #f1f3f4;
+		border-bottom: 1px solid var(--border-color);
 	}
 
 	.tool-btn {
@@ -74,7 +74,7 @@
 		border: none;
 		background: transparent;
 		text-align: left;
-		color: #495057;
+		color: var(--text-secondary);
 		font-size: 14px;
 		font-weight: 500;
 		cursor: pointer;
@@ -84,13 +84,13 @@
 	}
 
 	.tool-btn:hover {
-		background: #f8f9fa;
-		color: #667eea;
+		background: var(--card-background);
+		color: var(--primary);
 	}
 
 	.tool-btn.active {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		color: white;
+		background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+		color: var(--text-primary);
 		font-weight: 600;
 	}
 
