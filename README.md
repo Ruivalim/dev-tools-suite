@@ -1,108 +1,36 @@
-# Dev Tools Suite - Svelte Version
+# Dev Tools Suite
 
-A modern, web-based development tools suite built with SvelteKit and TypeScript. This is a complete rebuild of the original simple-diff project using modern web technologies.
+## What it does
 
-## Features
+The app includes several tools that developers use daily:
 
-### Text Diff Tool
-- Side-by-side and inline text comparison
-- Syntax highlighting for multiple languages (JavaScript, TypeScript, CSS, HTML, Markdown, Python, Java, C/C++)
-- File upload support
-- Live line count display
-- Diff statistics (additions/deletions)
+**Text Diff Tool** - Compare files or text snippets side by side with syntax highlighting for most programming languages. Upload files directly or paste your code.
 
-### Base64 Encoder/Decoder
-- Encode text to Base64
-- Decode Base64 to text
-- Copy-to-clipboard functionality
+**Base64 Encoder/Decoder** - Quick encoding and decoding with copy-to-clipboard functionality.
 
-### JavaScript Minifier/Beautifier
-- Minify JavaScript code
-- Beautify/format JavaScript code
-- Syntax highlighting with CodeMirror
+**JavaScript Minifier/Beautifier** - Clean up your JavaScript or make it readable again.
 
-### CSS Minifier/Beautifier  
-- Minify CSS code
-- Beautify/format CSS code
-- Syntax highlighting with CodeMirror
+**CSS Minifier/Beautifier** - Same thing but for stylesheets.
 
-### JSON Formatter
-- Format JSON with proper indentation
-- Minify JSON
-- Validate JSON syntax
-- Error reporting for invalid JSON
+**JSON Formatter** - Validate and format JSON with proper error reporting when things go wrong.
 
-## Technologies Used
+## Tech stack
 
-- **SvelteKit** - Modern web framework
-- **TypeScript** - Type-safe JavaScript
-- **CodeMirror 6** - Advanced code editor
-- **diff2html** - Beautiful diff visualization
-- **Vite** - Fast build tool
+Built with SvelteKit because it's fast and the developer experience is excellent. TypeScript keeps things type-safe. CodeMirror 6 powers the code editors with syntax highlighting. The diff visualization uses diff2html for clean, readable output. Vite handles the build process and keeps development snappy.
 
-## Development
+Everything compiles to static files, so you can host it anywhere or run it locally without needing a server.
 
-### Prerequisites
-- Node.js 18+ 
-- npm
+## Running it
 
-### Setup
 ```bash
 npm install
-```
-
-### Development Server
-```bash
 npm run dev
 ```
 
-### Build for Production
+For production:
+
 ```bash
 npm run build
 ```
 
-### Preview Production Build
-```bash
-npm run preview
-```
-
-## Project Structure
-
-```
-src/
-├── app.css                 # Global styles
-├── app.html               # HTML template
-├── lib/
-│   └── components/        # Svelte components
-│       ├── Header.svelte
-│       ├── Sidebar.svelte
-│       ├── DiffTool.svelte
-│       ├── Base64Tool.svelte
-│       ├── JSMinifierTool.svelte
-│       ├── CSSMinifierTool.svelte
-│       └── JSONFormatterTool.svelte
-└── routes/
-    ├── +layout.svelte     # Layout component
-    └── +page.svelte       # Main page
-```
-
-## Features Comparison
-
-| Feature | Original | Svelte Version |
-|---------|----------|----------------|
-| Text Diff | ✅ | ✅ |
-| Base64 Encode/Decode | ✅ | ✅ |
-| JS Minify/Beautify | ✅ | ✅ |
-| CSS Minify/Beautify | ✅ | ✅ |
-| JSON Format/Validate | ✅ | ✅ |
-| Framework | Vanilla JS | SvelteKit |
-| Build Tool | esbuild | Vite |
-| Code Editor | CodeMirror 5 | CodeMirror 6 |
-| TypeScript | ✅ | ✅ |
-| Responsive Design | ✅ | ✅ |
-| File Upload | ✅ | ✅ |
-| Syntax Highlighting | ✅ | ✅ |
-
-## License
-
-MIT License
+The build output goes to the `build/` directory and can be served with any static file server.
