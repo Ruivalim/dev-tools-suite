@@ -8,18 +8,12 @@ RUN npm ci
 
 COPY . .
 
-ARG BASE_PATH=""
-ENV BASE_PATH=${BASE_PATH}
-
 RUN npm run build
 
 FROM nginx:alpine
 
-COPY --from=builder /app/build /usr/share/nginx/html/app
-COPY entrypoint.sh /entrypoint.sh
-
-RUN chmod +x /entrypoint.sh
+COPY --from=builder /app/build /usr/share/nginx/html
 
 EXPOSE 80
 
-ENTRYPOINT ["/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
