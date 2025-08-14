@@ -10,7 +10,8 @@
 		{ id: 'base64', name: 'Base64 Encoder' },
 		{ id: 'js-minifier', name: 'JS Minifier' },
 		{ id: 'css-minifier', name: 'CSS Minifier' },
-		{ id: 'json-formatter', name: 'JSON Formatter' }
+		{ id: 'json-formatter', name: 'JSON Formatter' },
+		{ id: 'sort', name: 'Text Sorter' }
 	];
 
 	function switchTool(toolId: string) {

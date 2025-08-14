@@ -7,6 +7,7 @@
 	import JSMinifierTool from '$lib/components/JSMinifierTool.svelte';
 	import CSSMinifierTool from '$lib/components/CSSMinifierTool.svelte';
 	import JSONFormatterTool from '$lib/components/JSONFormatterTool.svelte';
+	import SortTool from '$lib/components/SortTool.svelte';
 
 	let activeTool = 'diff';
 
@@ -36,6 +37,8 @@
 			<CSSMinifierTool />
 		{:else if activeTool === 'json-formatter'}
 			<JSONFormatterTool />
+		{:else if activeTool === 'sort'}
+			<SortTool />
 		{/if}
 	</main>
 </div>
