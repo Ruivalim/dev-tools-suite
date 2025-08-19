@@ -11,7 +11,8 @@
 		{ id: 'js-minifier', name: 'JS Minifier' },
 		{ id: 'css-minifier', name: 'CSS Minifier' },
 		{ id: 'json-formatter', name: 'JSON Formatter' },
-		{ id: 'sort', name: 'Text Sorter' }
+		{ id: 'sort', name: 'Text Sorter' },
+		{ id: 'markdown-to-pdf', name: 'Markdown to PDF' }
 	];
 
 	function switchTool(toolId: string) {
