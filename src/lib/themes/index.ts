@@ -1,7 +1,9 @@
 import { rosePineTheme } from './rose-pine';
 import { gruvboxTheme } from './gruvbox';
+import { ruisTheme } from './ruis';
 
 export const themes = {
+	'ruis': ruisTheme,
 	'rose-pine': rosePineTheme,
 	'gruvbox': gruvboxTheme,
 };
