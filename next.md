@@ -1,0 +1,13 @@
+- **Hash Generator** - MD5, SHA-1, SHA-256, SHA-512 hash generation
+- **UUID Generator** - Generate v1, v4, v7 UUIDs with customizable formats
+- **QR Code Generator** - Create QR codes from text input
+- **Markdown Converter** - Convert Markdown to HTML and vice versa
+- **Regular Expression Tester** - Test regex patterns with real-time matching
+- **Timestamp Converter** - Unix timestamp to human-readable date conversion
+- **Color Palette Generator** - Generate color schemes and convert between formats (HEX, RGB, HSL)
+- **HTML Formatter/Minifier** - Format and minify HTML code
+- **XML/YAML Converter** - Convert between XML, YAML, and JSON formats
+- **JWT Decoder** - Decode and validate JSON Web Tokens
+- **Password Generator** - Generate secure passwords with customizable rules
+- **Lorem Ipsum Generator** - Generate placeholder text in multiple languages
+- **Cron Expression Builder** - Visual cron expression generator and validator
