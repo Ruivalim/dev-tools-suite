@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { marked } from 'marked';
 	import { jsPDF } from 'jspdf';
-	import html2canvas from 'html2canvas';
 	import { EditorView, basicSetup } from 'codemirror';
 	import { markdown } from '@codemirror/lang-markdown';
 	import hljs from 'highlight.js';
 	import 'highlight.js/styles/github.css';
+  import html2canvas from 'html2canvas';
 
 	let editorElement: HTMLElement;
 	let previewElement: HTMLElement;
@@ -19,6 +18,8 @@ This is a **sample markdown** document that you can edit and convert to PDF with
 - *Italic text*
 - **Bold text**
 - ~~Strikethrough text~~
+- \`Inline code\`
+- [Links to websites](https://google.com)
 - Syntax highlighted code blocks
 - Professional header styling
 - Optional table of contents
@@ -57,21 +58,29 @@ print(factorial(5))  # Output: 120
 
 ## Lists and Quotes
 
-### Ordered List
-1. First item
-2. Second item
-3. Third item
+### Ordered List with **formatting**
+1. First item with *emphasis*
+2. Second item with \`code\`
+3. Third item with [link](https://example.com)
 
-### Unordered List
-- Bullet point one
-- Bullet point two
-- Bullet point three
+### Unordered List with ~~strikethrough~~
+- Bullet point with **bold text**
+- Another point with *italic text*
+- Final point with ~~strikethrough~~
 
-> This is a blockquote example with some important information that stands out from the regular text.
+### Nested Lists
+- Main item 1
+  - Nested item A
+  - Nested item B
+- Main item 2
+  - Nested item C with **bold**
+  - Nested item D with *italic*
 
-## Links and Formatting
+> This is a blockquote example with **bold text**, *italic text*, \`inline code\`, ~~strikethrough~~, and a [link](https://example.com) that stands out from the regular text.
 
-Visit [Google](https://google.com) for more information.
+## Advanced Formatting
+
+Text with **bold**, *italic*, ~~strikethrough~~, \`inline code\`, and [links](https://google.com) all in one paragraph.
 
 **Important:** Enable the table of contents option to see all these headers organized in a separate page!
 `;
@@ -97,12 +106,14 @@ Visit [Google](https://google.com) for more information.
 		legal: { width: 216, height: 356 }
 	};
 
+	// Unit helpers (1pt = 1/72 inch ≈ 0.352777... mm)
+	const MM_PER_PT = 25.4 / 72;
+	const toMmFromPt = (pt: number) => pt * MM_PER_PT;
+
 	let editorView: EditorView;
-	let htmlContent = '';
 	let headers: Array<{level: number, text: string, id: string, page?: number}> = [];
 
 	onMount(async () => {
-		// Initialize CodeMirror editor
 		editorView = new EditorView({
 			doc: markdownText,
 			extensions: [
@@ -122,7 +133,6 @@ Visit [Google](https://google.com) for more information.
 	});
 
 	function convertHighlightJSToInlineStyles(highlightedCode: string): string {
-		// Convert highlight.js classes to inline styles for PDF generation
 		const styleMap: {[key: string]: string} = {
 			'hljs-keyword': 'color: #d73a49; font-weight: bold;',
 			'hljs-string': 'color: #032f62;',
@@ -145,202 +155,30 @@ Visit [Google](https://google.com) for more information.
 		};
 
 		let result = highlightedCode;
-		
-		// Replace each class with inline styles
 		for (const [className, style] of Object.entries(styleMap)) {
 			const regex = new RegExp(`<span class="${className}">([^<]*)</span>`, 'g');
 			result = result.replace(regex, `<span style="${style}">$1</span>`);
 		}
-		
 		return result;
 	}
 
-	async function updatePreview() {
-		// Parse markdown to elements (same as PDF generation)
-		const elements = parseMarkdownToElements();
-		
-		// Extract headers for table of contents
-		headers = [];
-		let headerCounter = 0;
-		
-		// Build preview HTML that matches PDF layout exactly
-		let previewHtml = '';
-		const paper = paperSizes[paperSize];
-		const contentWidth = paper.width - marginLeft - marginRight;
-		
-		// Simulate page layout
-		const pageLayout = simulatePageLayout();
-		
-		previewHtml += `<div style="font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #000;">`;
-		
-		pageLayout.forEach((page, pageIndex) => {
-			previewHtml += `<div style="
-				width: ${contentWidth}mm; 
-				min-height: ${paper.height - marginTop - marginBottom}mm;
-				margin: ${marginTop}mm ${marginRight}mm ${marginBottom}mm ${marginLeft}mm;
-				border: 1px solid #ddd;
-				page-break-after: always;
-				padding: 10mm;
-				background: white;
-				box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-				margin-bottom: 20px;
-			">`;
-			
-			// Add page number indicator
-			previewHtml += `<div style="position: absolute; top: 5px; right: 10px; font-size: 10px; color: #666;">Page ${page.page}</div>`;
-			
-			// Add elements to page
-			page.elements.forEach(element => {
-				if (element.type === 'header') {
-					headerCounter++;
-					const id = `header-${headerCounter}`;
-					headers.push({ level: element.level || 1, text: element.content, id });
-					
-					previewHtml += `<h${element.level} id="${id}" style="
-						font-size: ${element.style.fontSize}pt;
-						font-weight: ${element.style.fontWeight};
-						line-height: ${element.style.lineHeight};
-						margin-top: ${element.style.marginTop}pt;
-						margin-bottom: ${element.style.marginBottom}pt;
-						color: ${element.style.color};
-						${element.level === 1 ? 'border-bottom: 2px solid #333; padding-bottom: 0.3em;' : ''}
-						${element.level === 2 ? 'border-bottom: 1px solid #666; padding-bottom: 0.2em;' : ''}
-					">${element.content}</h${element.level}>`;
-				}
-				else if (element.type === 'code') {
-					// Apply syntax highlighting if available
-					let highlightedCode = element.content;
-					if (element.language && hljs.getLanguage(element.language)) {
-						try {
-							const highlighted = hljs.highlight(element.content, { language: element.language }).value;
-							highlightedCode = convertHighlightJSToInlineStyles(highlighted);
-						} catch (err) {
-							console.error('Syntax highlighting error:', err);
-						}
-					}
-					
-					previewHtml += `<pre style="
-						background-color: ${element.style.backgroundColor};
-						border: 1px solid ${codeBorderColor};
-						padding: ${element.style.padding}px;
-						border-radius: 4px;
-						margin-top: ${element.style.marginTop}pt;
-						margin-bottom: ${element.style.marginBottom}pt;
-						font-size: ${element.style.fontSize}pt;
-						line-height: ${element.style.lineHeight};
-						overflow-x: auto;
-						white-space: pre;
-					"><code style="color: ${element.style.color}; font-family: 'Courier New', monospace;">${highlightedCode}</code></pre>`;
-				}
-				else if (element.type === 'blockquote') {
-					previewHtml += `<blockquote style="
-						border-left: 4px solid #ddd;
-						padding-left: ${element.style.padding}px;
-						margin-top: ${element.style.marginTop}pt;
-						margin-bottom: ${element.style.marginBottom}pt;
-						font-size: ${element.style.fontSize}pt;
-						line-height: ${element.style.lineHeight};
-						color: ${element.style.color};
-						font-style: italic;
-					">${element.content}</blockquote>`;
-				}
-				else if (element.type === 'list') {
-					previewHtml += `<div style="
-						margin-top: ${element.style.marginTop}pt;
-						margin-bottom: ${element.style.marginBottom}pt;
-						font-size: ${element.style.fontSize}pt;
-						line-height: ${element.style.lineHeight};
-						color: ${element.style.color};
-						padding-left: 20px;
-					">${element.content}</div>`;
-				}
-				else { // text
-					// Process inline formatting
-					let content = element.content
-						.replace(/<b>(.*?)<\/b>/g, '<strong>$1</strong>')
-						.replace(/<i>(.*?)<\/i>/g, '<em>$1</em>')
-						.replace(/<code>(.*?)<\/code>/g, '<code style="background: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-family: monospace;">$1</code>');
-					
-					previewHtml += `<p style="
-						margin-top: ${element.style.marginTop}pt;
-						margin-bottom: ${element.style.marginBottom}pt;
-						font-size: ${element.style.fontSize}pt;
-						line-height: ${element.style.lineHeight};
-						color: ${element.style.color};
-					">${content}</p>`;
-				}
-			});
-			
-			previewHtml += `</div>`;
-		});
-		
-		previewHtml += `</div>`;
+	// ========== Parsing & Layout ==========
 
-		if (previewElement) {
-			previewElement.innerHTML = previewHtml;
-		}
-	}
-
-	function handleLogoUpload(event: Event) {
-		const target = event.target as HTMLInputElement;
-		if (target.files && target.files[0]) {
-			logoFile = target.files[0];
-		}
-	}
-
-	function generateTOCPage(pdf: jsPDF, paper: any) {
-		if (!includeTOC || headers.length === 0) return false;
-		
-		// Add TOC title
-		pdf.setFontSize(24);
-		pdf.setFont('helvetica', 'bold');
-		pdf.text('Table of Contents', marginLeft, marginTop + 10);
-		
-		let yPosition = marginTop + 25;
-		pdf.setFontSize(12);
-		pdf.setFont('helvetica', 'normal');
-		
-		headers.forEach((header, index) => {
-			if (yPosition > paper.height - marginBottom - 10) {
-				pdf.addPage();
-				yPosition = marginTop;
-			}
-			
-			const indent = (header.level - 1) * 8;
-			const pageNum = header.page || 1;
-			
-			// Add dots between header text and page number
-			const headerText = header.text;
-			const maxTextWidth = paper.width - marginLeft - marginRight - 20 - indent;
-			const truncatedText = headerText.length > 50 ? headerText.substring(0, 47) + '...' : headerText;
-			
-			pdf.text(truncatedText, marginLeft + indent, yPosition);
-			
-			// Add page number
-			pdf.text(pageNum.toString(), paper.width - marginRight - 10, yPosition);
-			
-			yPosition += 7;
-		});
-		
-		return true;
-	}
-
-	// Text-based PDF generation
 	interface TextElement {
 		type: 'text' | 'header' | 'code' | 'list' | 'blockquote';
 		content: string;
-		level?: number; // for headers
-		language?: string; // for code blocks
+		level?: number;
+		language?: string;
 		style: {
-			fontSize: number;
-			fontWeight: string;
-			lineHeight: number;
-			marginTop: number;
-			marginBottom: number;
+			fontSize: number;     // pt
+			fontWeight: string;   // 'normal' | 'bold'
+			lineHeight: number;   // unitless
+			marginTop: number;    // pt
+			marginBottom: number; // pt
 			color: string;
 			backgroundColor?: string;
 			borderLeft?: string;
-			padding?: number;
+			padding?: number;     // pt
 		};
 	}
 
@@ -348,26 +186,31 @@ Visit [Google](https://google.com) for more information.
 		const elements: TextElement[] = [];
 		const lines = markdownText.split('\n');
 		let i = 0;
-		
+
 		while (i < lines.length) {
 			const line = lines[i].trim();
-			
-			if (!line) {
-				i++;
-				continue;
-			}
-			
+
+			if (!line) { i++; continue; }
+
 			// Headers
 			if (line.startsWith('#')) {
 				const level = line.match(/^#+/)?.[0].length || 1;
-				const text = line.replace(/^#+\s*/, '');
+				let text = line.replace(/^#+\s*/, '');
+				
+				// Process inline formatting in headers
+				text = text
+					.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+					.replace(/\*(.*?)\*/g, '<i>$1</i>')
+					.replace(/`(.*?)`/g, '<code>$1</code>')
+					.replace(/~~(.*?)~~/g, '<s>$1</s>');
+				
 				elements.push({
 					type: 'header',
 					content: text,
 					level,
 					style: {
 						fontSize: level === 1 ? 18 : level === 2 ? 16 : level === 3 ? 14 : 12,
-						fontWeight: level <= 2 ? 'bold' : '600',
+						fontWeight: 'bold',
 						lineHeight: 1.4,
 						marginTop: level === 1 ? 20 : level === 2 ? 16 : 12,
 						marginBottom: 8,
@@ -380,12 +223,10 @@ Visit [Google](https://google.com) for more information.
 				const language = line.substring(3).trim();
 				const codeLines: string[] = [];
 				i++; // Skip opening ```
-				
 				while (i < lines.length && !lines[i].trim().startsWith('```')) {
 					codeLines.push(lines[i]);
 					i++;
 				}
-				
 				elements.push({
 					type: 'code',
 					content: codeLines.join('\n'),
@@ -398,13 +239,22 @@ Visit [Google](https://google.com) for more information.
 						marginBottom: 12,
 						color: codeTextColor,
 						backgroundColor: codeBackgroundColor,
-						padding: 10
+						padding: 8
 					}
 				});
 			}
 			// Blockquotes
 			else if (line.startsWith('>')) {
-				const text = line.replace(/^>\s*/, '');
+				let text = line.replace(/^>\s*/, '');
+				
+				// Process inline formatting in blockquotes
+				text = text
+					.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+					.replace(/\*(.*?)\*/g, '<i>$1</i>')
+					.replace(/`(.*?)`/g, '<code>$1</code>')
+					.replace(/~~(.*?)~~/g, '<s>$1</s>')
+					.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>'); // Links
+				
 				elements.push({
 					type: 'blockquote',
 					content: text,
@@ -416,34 +266,53 @@ Visit [Google](https://google.com) for more information.
 						marginBottom: 12,
 						color: '#666',
 						borderLeft: '4px solid #ddd',
-						padding: 10
+						padding: 8
 					}
 				});
 			}
-			// Lists
-			else if (line.match(/^[-*+]\s/) || line.match(/^\d+\.\s/)) {
-				const text = line.replace(/^[-*+]\s/, '• ').replace(/^\d+\.\s/, '1. ');
+			// Lists - handle both ordered and unordered, including multi-line content
+			else if (line.match(/^(\s*)[-*+]\s/) || line.match(/^(\s*)\d+\.\s/)) {
+				const isOrdered = line.match(/^\s*\d+\.\s/);
+				const indentMatch = line.match(/^(\s*)/);
+				const indent = indentMatch ? indentMatch[1].length : 0;
+				
+				let text = line.replace(/^\s*[-*+]\s/, '').replace(/^\s*\d+\.\s/, '');
+				
+				// Process inline formatting in list items
+				text = text
+					.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+					.replace(/\*(.*?)\*/g, '<i>$1</i>')
+					.replace(/`(.*?)`/g, '<code>$1</code>')
+					.replace(/~~(.*?)~~/g, '<s>$1</s>')
+					.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+				
+				const bullet = isOrdered ? '1.' : '•';
+				const paddingLeft = 20 + (indent * 10); // Nested indentation
+				
 				elements.push({
 					type: 'list',
-					content: text,
+					content: `${bullet} ${text}`,
 					style: {
 						fontSize: 11,
 						fontWeight: 'normal',
 						lineHeight: 1.5,
 						marginTop: 4,
 						marginBottom: 4,
-						color: '#000'
+						color: '#000',
+						padding: paddingLeft
 					}
 				});
 			}
 			// Regular text
 			else {
-				// Process inline formatting (bold, italic, code)
+				// Process all inline markdown formatting
 				let processedText = line
 					.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
 					.replace(/\*(.*?)\*/g, '<i>$1</i>')
-					.replace(/`(.*?)`/g, '<code>$1</code>');
-				
+					.replace(/`(.*?)`/g, '<code>$1</code>')
+					.replace(/~~(.*?)~~/g, '<s>$1</s>')
+					.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
 				elements.push({
 					type: 'text',
 					content: processedText,
@@ -457,180 +326,570 @@ Visit [Google](https://google.com) for more information.
 					}
 				});
 			}
-			
+
 			i++;
 		}
-		
+
 		return elements;
 	}
 
-	function calculateLinesPerPage(): number {
-		const paper = paperSizes[paperSize];
-		const contentHeight = paper.height - marginTop - marginBottom;
-		const baseLineHeight = 11 * 1.6; // 11pt font with 1.6 line height
-		const lineHeightMm = (baseLineHeight * 25.4) / 72; // Convert pt to mm
-		return Math.floor(contentHeight / lineHeightMm);
+	function extractHeadersFromElements(elements: TextElement[]) {
+		headers = [];
+		let counter = 0;
+		for (const el of elements) {
+			if (el.type === 'header') {
+				counter++;
+				headers.push({ level: el.level || 1, text: el.content, id: `header-${counter}` });
+			}
+		}
 	}
 
 	function simulatePageLayout(): Array<{elements: TextElement[], page: number}> {
-		const elements = parseMarkdownToElements();
-		const linesPerPage = calculateLinesPerPage();
+		const paper = paperSizes[paperSize];
+		const tmp = new jsPDF({ unit: 'mm', format: [paper.width, paper.height] });
+
 		const pages: Array<{elements: TextElement[], page: number}> = [];
-		
-		let currentPage: TextElement[] = [];
-		let currentLines = 0;
-		let pageNumber = includeTOC ? 2 : 1;
-		
-		for (let i = 0; i < elements.length; i++) {
-			const element = elements[i];
-			
-			// Calculate lines needed for this element
-			const elementLines = Math.ceil(element.content.length / 80) || 1; // Rough estimate
-			const totalElementLines = elementLines + Math.ceil(element.style.marginTop / 4) + Math.ceil(element.style.marginBottom / 4);
-			
-			// Check if we need to break page
-			if (currentLines + totalElementLines > linesPerPage && currentPage.length > 0) {
-				// Smart break rules
-				const shouldBreakBefore = 
-					element.type === 'header' || // Headers start new pages
-					element.type === 'code' || // Code blocks don't split
-					(currentPage.length > 0 && currentPage[currentPage.length - 1].type === 'header'); // Don't leave headers alone
-				
-				if (shouldBreakBefore) {
-					// Finish current page and start new one
-					pages.push({elements: [...currentPage], page: pageNumber});
-					currentPage = [element];
-					currentLines = totalElementLines;
-					pageNumber++;
-					
-					// Update header page tracking
-					if (element.type === 'header') {
-						const headerIndex = headers.findIndex(h => h.text === element.content);
-						if (headerIndex !== -1) {
-							headers[headerIndex].page = pageNumber;
-						}
-					}
-					continue;
-				}
+		const elements = parseMarkdownToElements();
+
+		extractHeadersFromElements(elements);
+
+		const contentWidthMm = paper.width - marginLeft - marginRight;
+		let current: TextElement[] = [];
+		let y = marginTop;
+		let pageNo = includeTOC ? 2 : 1;
+
+		const pushPage = () => {
+			if (current.length) pages.push({ elements: current, page: pageNo });
+			current = [];
+			y = marginTop;
+			pageNo += 1;
+		};
+
+		for (const el of elements) {
+			tmp.setFontSize(el.style.fontSize);
+			const isBold = el.style.fontWeight === 'bold' || (el.type === 'header' && el.style.fontWeight !== 'normal');
+			tmp.setFont('helvetica', isBold ? 'bold' : 'normal');
+
+			const padMm = toMmFromPt(el.style.padding || 0);
+			const widthMm = contentWidthMm - 2 * padMm;
+
+			// For code we measure line-count roughly via splitTextToSize as plain text; actual PDF drawing uses token widths, but height approximation is okay.
+			const plain = stripInlineHtml(el.content);
+			const lines = tmp.splitTextToSize(plain, widthMm);
+			const lineHeightMm = el.style.fontSize * el.style.lineHeight * MM_PER_PT;
+
+			const blockHeightMm =
+				toMmFromPt(el.style.marginTop) +
+				(lines.length * lineHeightMm) +
+				toMmFromPt(el.style.marginBottom);
+
+			const blockHeightWithPadMm = blockHeightMm + (el.style.padding ? 2 * padMm : 0);
+			const requiredMm = el.type === 'code' ? blockHeightWithPadMm : blockHeightMm;
+
+			const shouldBreakBefore =
+				el.type === 'header' ||
+				el.type === 'code' ||
+				(current.length && current[current.length - 1].type === 'header');
+
+			if ((y + requiredMm > (paper.height - marginBottom)) && current.length) {
+				pushPage();
 			}
-			
-			// Add element to current page
-			currentPage.push(element);
-			currentLines += totalElementLines;
-			
-			// Update header page tracking
-			if (element.type === 'header') {
-				const headerIndex = headers.findIndex(h => h.text === element.content);
-				if (headerIndex !== -1) {
-					headers[headerIndex].page = pageNumber;
-				}
+
+			if (el.type === 'header') {
+				const idx = headers.findIndex(h => h.text === el.content);
+				if (idx !== -1) headers[idx].page = pageNo;
 			}
+
+			current.push(el);
+			y += requiredMm;
 		}
-		
-		// Add final page if it has content
-		if (currentPage.length > 0) {
-			pages.push({elements: currentPage, page: pageNumber});
-		}
-		
+
+		if (current.length) pages.push({ elements: current, page: pageNo });
 		return pages;
 	}
 
-	async function generatePDF() {
-		const paper = paperSizes[paperSize];
-		const pdf = new jsPDF({
-			unit: 'mm',
-			format: [paper.width, paper.height]
+	// ========== Preview (with visible margins) ==========
+async function updatePreview() {
+  const paper = paperSizes[paperSize];
+  const pageLayout = simulatePageLayout();
+
+  let previewHtml = '';
+  // wrapper (no special class needed)
+  previewHtml += `<div style="font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #000;">`;
+
+  pageLayout.forEach((page) => {
+    // Full page — THIS is the element we’ll snapshot parent of the content
+    previewHtml += `<div class="pdf-page" style="
+      width: ${paper.width}mm;
+      min-height: ${paper.height}mm;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin: 0 0 20px 0;
+      position: relative;
+      border: 1px solid #ddd;
+    ">`;
+
+    // Page number indicator (outside content frame)
+    previewHtml += `<div style="position: absolute; top: 5px; right: 10px; font-size: 10px; color: #666;">Page ${page.page}</div>`;
+
+    // Inner content frame (respects margins) — THIS is what we snapshot with html2canvas
+    previewHtml += `<div class="pdf-content" style="
+      position: absolute;
+      top: ${marginTop}mm;
+      left: ${marginLeft}mm;
+      right: ${marginRight}mm;
+      bottom: ${marginBottom}mm;
+      padding: 0;
+      overflow: hidden;
+    ">`;
+
+    // Render the page elements like before
+    page.elements.forEach(element => {
+      if (element.type === 'header') {
+        // Process HTML tags in headers
+        let headerContent = element.content
+          .replace(/<b>(.*?)<\/b>/g, '<strong>$1</strong>')
+          .replace(/<i>(.*?)<\/i>/g, '<em>$1</em>')
+          .replace(/<s>(.*?)<\/s>/g, '<span style="text-decoration: line-through;">$1</span>')
+          .replace(/<code>(.*?)<\/code>/g, '<code style="background: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-family: monospace;">$1</code>');
+        
+        previewHtml += `<h${element.level} style="
+          font-size: ${element.style.fontSize}pt;
+          font-weight: ${element.style.fontWeight};
+          line-height: ${element.style.lineHeight};
+          margin-top: ${element.style.marginTop}pt;
+          margin-bottom: ${element.style.marginBottom}pt;
+          color: ${element.style.color};
+          ${element.level === 1 ? 'border-bottom: 2px solid #333; padding-bottom: 0.3em;' : ''}
+          ${element.level === 2 ? 'border-bottom: 1px solid #666; padding-bottom: 0.2em;' : ''}
+        ">${headerContent}</h${element.level}>`;
+      }
+      else if (element.type === 'code') {
+        let highlightedCode = element.content;
+        if (element.language && hljs.getLanguage(element.language)) {
+          try {
+            const highlighted = hljs.highlight(element.content, { language: element.language }).value;
+            highlightedCode = convertHighlightJSToInlineStyles(highlighted);
+          } catch {}
+        }
+        previewHtml += `<pre style="
+          background-color: ${element.style.backgroundColor};
+          border: 1px solid ${codeBorderColor};
+          padding: ${element.style.padding ?? 0}pt;
+          border-radius: 4px;
+          margin-top: ${element.style.marginTop}pt;
+          margin-bottom: ${element.style.marginBottom}pt;
+          font-size: ${element.style.fontSize}pt;
+          line-height: ${element.style.lineHeight};
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        "><code style="color: ${element.style.color}; font-family: 'Courier New', monospace;">${highlightedCode}</code></pre>`;
+      }
+      else if (element.type === 'blockquote') {
+        // Process HTML tags in blockquotes
+        let blockquoteContent = element.content
+          .replace(/<b>(.*?)<\/b>/g, '<strong>$1</strong>')
+          .replace(/<i>(.*?)<\/i>/g, '<em>$1</em>')
+          .replace(/<s>(.*?)<\/s>/g, '<span style="text-decoration: line-through;">$1</span>')
+          .replace(/<code>(.*?)<\/code>/g, '<code style="background: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-family: monospace;">$1</code>')
+          .replace(/<a href="([^"]*)">(.*?)<\/a>/g, '<a href="$1" style="color: #0066cc; text-decoration: none;">$2</a>');
+        
+        previewHtml += `<blockquote style="
+          border-left: 4px solid #ddd;
+          padding-left: ${element.style.padding ?? 0}pt;
+          margin-top: ${element.style.marginTop}pt;
+          margin-bottom: ${element.style.marginBottom}pt;
+          font-size: ${element.style.fontSize}pt;
+          line-height: ${element.style.lineHeight};
+          color: ${element.style.color};
+          font-style: italic;
+        ">${blockquoteContent}</blockquote>`;
+      }
+      else if (element.type === 'list') {
+        // Process HTML tags in list content
+        let listContent = element.content
+          .replace(/<b>(.*?)<\/b>/g, '<strong>$1</strong>')
+          .replace(/<i>(.*?)<\/i>/g, '<em>$1</em>')
+          .replace(/<s>(.*?)<\/s>/g, '<span style="text-decoration: line-through;">$1</span>')
+          .replace(/<code>(.*?)<\/code>/g, '<code style="background: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-family: monospace;">$1</code>')
+          .replace(/<a href="([^"]*)">(.*?)<\/a>/g, '<a href="$1" style="color: #0066cc; text-decoration: none;">$2</a>');
+        
+        previewHtml += `<div style="
+          margin-top: ${element.style.marginTop}pt;
+          margin-bottom: ${element.style.marginBottom}pt;
+          font-size: ${element.style.fontSize}pt;
+          line-height: ${element.style.lineHeight};
+          color: ${element.style.color};
+          padding-left: ${element.style.padding || 20}px;
+        ">${listContent}</div>`;
+      }
+      else { // text
+        let content = element.content
+          .replace(/<b>(.*?)<\/b>/g, '<strong>$1</strong>')
+          .replace(/<i>(.*?)<\/i>/g, '<em>$1</em>')
+          .replace(/<s>(.*?)<\/s>/g, '<span style="text-decoration: line-through;">$1</span>')
+          .replace(/<code>(.*?)<\/code>/g, '<code style="background: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-family: monospace;">$1</code>')
+          .replace(/<a href="([^"]*)">(.*?)<\/a>/g, '<a href="$1" style="color: #0066cc; text-decoration: none;">$2</a>');
+
+        previewHtml += `<p style="
+          margin-top: ${element.style.marginTop}pt;
+          margin-bottom: ${element.style.marginBottom}pt;
+          font-size: ${element.style.fontSize}pt;
+          line-height: ${element.style.lineHeight};
+          color: ${element.style.color};
+        ">${content}</p>`;
+      }
+    });
+
+    previewHtml += `</div></div>`; // close .pdf-content then .pdf-page
+  });
+
+  previewHtml += `</div>`;
+  if (previewElement) previewElement.innerHTML = previewHtml;
+}
+
+	
+	function handleLogoUpload(event: Event) {
+		const target = event.target as HTMLInputElement;
+		if (target.files && target.files[0]) {
+			logoFile = target.files[0];
+		}
+	}
+
+	function generateTOCPage(pdf: jsPDF, paper: any) {
+		if (!includeTOC || headers.length === 0) return false;
+
+		pdf.setFontSize(24);
+		pdf.setFont('helvetica', 'bold');
+		pdf.text('Table of Contents', marginLeft, marginTop + 10);
+
+		let yPosition = marginTop + 25;
+		pdf.setFontSize(12);
+		pdf.setFont('helvetica', 'normal');
+
+		headers.forEach((header) => {
+			if (yPosition > paper.height - marginBottom - 10) {
+				pdf.addPage();
+				yPosition = marginTop;
+			}
+
+			const indent = (header.level - 1) * 8;
+			const pageNum = header.page || 1;
+			const headerText = header.text;
+			const truncatedText = headerText.length > 50 ? headerText.substring(0, 47) + '...' : headerText;
+
+			pdf.text(truncatedText, marginLeft + indent, yPosition);
+			pdf.text(String(pageNum), paper.width - marginRight - 10, yPosition);
+
+			yPosition += 7;
 		});
 
-		// Calculate page layout
+		return true;
+	}
+
+	// ========== Helpers for PDF drawing ==========
+
+	function stripInlineHtml(s: string): string {
+		// removes <b>, <i>, <code>, <span style=...> etc.
+		return s.replace(/<[^>]+>/g, '');
+	}
+
+	// Very small HTML style parser for spans produced by hljs
+	function parseSpanTokens(html: string): Array<{ text: string; color?: string; fontStyle?: 'normal'|'italic'; fontWeight?: 'normal'|'bold'; }> {
+		const out: Array<{ text: string; color?: string; fontStyle?: 'normal'|'italic'; fontWeight?: 'normal'|'bold'; }> = [];
+
+		// Replace <br> with newline markers
+		html = html.replace(/<br\s*\/?>/gi, '\n');
+
+		// Split by tags but keep text; handle <span style="...">...</span>
+		const regex = /<span\s+style="([^"]*)">([\s\S]*?)<\/span>|([^<]+)/gi;
+		let m: RegExpExecArray | null;
+		while ((m = regex.exec(html))) {
+			if (m[1] != null) {
+				const style = m[1];
+				const text = m[2];
+				const token: any = { text };
+				if (/font-weight\s*:\s*bold/i.test(style)) token.fontWeight = 'bold';
+				if (/font-style\s*:\s*italic/i.test(style)) token.fontStyle = 'italic';
+				const colorMatch = style.match(/color\s*:\s*([^;]+)/i);
+				if (colorMatch) token.color = colorMatch[1].trim();
+				out.push(token);
+			} else if (m[3]) {
+				out.push({ text: m[3] });
+			}
+		}
+		return out;
+	}
+
+	// Draw highlighted code with basic wrapping
+	function drawHighlightedCodeBlock(pdf: jsPDF, x: number, y: number, maxWidthMm: number, element: TextElement): number {
+		const fontSize = element.style.fontSize;
+		const lineHeightMm = fontSize * element.style.lineHeight * MM_PER_PT;
+		pdf.setFont('courier', 'normal'); // monospace
+
+		let html = element.content;
+		if (element.language && hljs.getLanguage(element.language)) {
+			try {
+				const highlighted = hljs.highlight(element.content, { language: element.language }).value;
+				html = convertHighlightJSToInlineStyles(highlighted);
+			} catch {
+				// fallback: no highlight
+			}
+		} else {
+			// no language: escape as plain text
+			html = element.content.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+		}
+
+		const tokens = parseSpanTokens(html);
+		let cursorX = x;
+		let cursorY = y;
+		const spaceW = pdf.getTextWidth(' ');
+
+		const padMm = toMmFromPt(element.style.padding || 0);
+		const innerX = x + padMm;
+		const innerWidth = maxWidthMm - 2 * padMm;
+		cursorX = innerX;
+
+		// background box already drawn by caller
+		for (const t of tokens) {
+			const parts = t.text.split(/(\s+)/); // keep spaces as tokens
+			for (const p of parts) {
+				if (p === '') continue;
+
+				// Handle explicit newlines inside tokens
+				const lines = p.split('\n');
+				for (let li = 0; li < lines.length; li++) {
+					let segment = lines[li];
+					if (segment.length === 0) {
+						// newline
+						cursorX = innerX;
+						cursorY += lineHeightMm;
+						continue;
+					}
+
+					// Measure width
+					// Apply style temporarily to measure near-accurately
+					const weight = t.fontWeight === 'bold' ? 'bold' : 'normal';
+					const style = t.fontStyle === 'italic' ? 'italic' : 'normal';
+					pdf.setFont('courier', (weight === 'bold' ? 'bold' : 'normal'));
+					pdf.setFontSize(fontSize);
+
+					// jsPDF doesn't support both bold+italic together for 'courier' by default; bold only is fine.
+
+					let remaining = segment;
+					while (remaining.length) {
+						// Greedy fit
+						let len = remaining.length;
+						while (len > 0 && (cursorX - innerX + pdf.getTextWidth(remaining.slice(0, len))) > innerWidth) {
+							len--;
+						}
+						if (len === 0) {
+							// force wrap
+							cursorX = innerX;
+							cursorY += lineHeightMm;
+							continue;
+						}
+						const chunk = remaining.slice(0, len);
+						remaining = remaining.slice(len);
+
+						// Set color
+						if (t.color) pdf.setTextColor(t.color); else pdf.setTextColor(element.style.color);
+
+						pdf.text(chunk, cursorX, cursorY);
+						cursorX += pdf.getTextWidth(chunk);
+
+						// If we've exactly filled the line, wrap for next chunk
+						if (cursorX - innerX >= innerWidth - 0.1) {
+							cursorX = innerX;
+							cursorY += lineHeightMm;
+						}
+					}
+
+					// If original part was a newline break and not last line
+					if (li < lines.length - 1) {
+						cursorX = innerX;
+						cursorY += lineHeightMm;
+					}
+				}
+			}
+		}
+
+		// Return consumed height from top y to last baseline + a small trailing pad
+		return (cursorY - y) + padMm;
+	}
+async function generatePDFFromPreview() {
+  const paper = paperSizes[paperSize];
+  const pdf = new jsPDF({ unit: 'mm', format: [paper.width, paper.height] });
+
+  // Grab all rendered preview "pages"
+  const pages = Array.from(previewElement?.querySelectorAll<HTMLElement>('.pdf-page') || []);
+  if (!pages.length) {
+    console.warn('No preview pages found.');
+    return;
+  }
+
+  // Scale for sharpness (2–3 is a good balance)
+  const scale = Math.max(2, Math.floor(window.devicePixelRatio || 2));
+
+  for (let i = 0; i < pages.length; i++) {
+    if (i > 0) pdf.addPage();
+
+    // We only snapshot the inner content box (the margins are real PDF margins)
+    const content = pages[i].querySelector<HTMLElement>('.pdf-content');
+    if (!content) continue;
+
+    // Snapshot the content area exactly as it appears
+    const canvas = await html2canvas(content, {
+      backgroundColor: '#ffffff',
+      scale,
+      useCORS: true,        // allows same-origin images; external images must support CORS
+      allowTaint: false,
+      logging: false,
+      windowWidth: document.documentElement.clientWidth // helps consistent layout
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+
+    // Place the snapshot inside the page margins
+    const x = marginLeft;
+    const y = marginTop;
+    const targetW = paper.width - marginLeft - marginRight;
+    const targetH = paper.height - marginTop - marginBottom;
+
+    // Preserve aspect ratio of the captured content (should already match)
+    const imgWmm = targetW;
+    const imgHmm = (canvas.height / canvas.width) * imgWmm;
+
+    // If for some reason it’s taller than the content box, scale to fit height
+    let drawW = imgWmm;
+    let drawH = imgHmm;
+    if (imgHmm > targetH) {
+      drawH = targetH;
+      drawW = (canvas.width / canvas.height) * drawH;
+    }
+
+    pdf.addImage(imgData, 'PNG', x, y, drawW, drawH);
+
+    // Optional: add logo overlay after the page image
+    if (logoFile) {
+      try {
+        const logoDataUrl = await fileToDataURL(logoFile);
+        const logoSize = 20; // mm
+        let logoX = marginLeft + 5;
+        let logoY = marginTop + 5;
+        switch (logoPosition) {
+          case 'top-right':
+            logoX = paper.width - marginRight - logoSize - 5; logoY = marginTop + 5; break;
+          case 'bottom-left':
+            logoX = marginLeft + 5; logoY = paper.height - marginBottom - logoSize - 5; break;
+          case 'bottom-right':
+            logoX = paper.width - marginRight - logoSize - 5; logoY = paper.height - marginBottom - logoSize - 5; break;
+        }
+        pdf.addImage(logoDataUrl, 'PNG', logoX, logoY, logoSize, logoSize);
+      } catch (e) {
+        console.error('Logo add failed', e);
+      }
+    }
+  }
+
+  pdf.save('markdown-document.pdf');
+}
+
+	async function generatePDF() {
+		const paper = paperSizes[paperSize];
+		const pdf = new jsPDF({ unit: 'mm', format: [paper.width, paper.height] });
+
 		const pageLayout = simulatePageLayout();
 
-		// Generate table of contents page if enabled
 		let tocAdded = false;
 		if (includeTOC && headers.length > 0) {
 			tocAdded = generateTOCPage(pdf, paper);
 		}
 
-		// Generate content pages
 		for (let pageIndex = 0; pageIndex < pageLayout.length; pageIndex++) {
 			const page = pageLayout[pageIndex];
-			
-			// Add new page if not first content page or if TOC was added
-			if (pageIndex > 0 || tocAdded) {
-				pdf.addPage();
-			}
+			if (pageIndex > 0 || tocAdded) pdf.addPage();
 
-			// Add content to page
 			let yPosition = marginTop;
-			
+
 			for (const element of page.elements) {
-				yPosition += element.style.marginTop;
-				
-				// Set font properties
+				const mtMm = toMmFromPt(element.style.marginTop);
+				const mbMm = toMmFromPt(element.style.marginBottom);
+				const padMm = toMmFromPt(element.style.padding || 0);
+				const textFrameWidth = paper.width - marginLeft - marginRight;
+
+				yPosition += mtMm;
+
+				// font setup
+				const isBold = element.style.fontWeight === 'bold' || (element.type === 'header' && element.style.fontWeight !== 'normal');
 				pdf.setFontSize(element.style.fontSize);
-				pdf.setFont('helvetica', element.style.fontWeight === 'bold' ? 'bold' : 'normal');
+				pdf.setFont('helvetica', isBold ? 'bold' : 'normal');
 				pdf.setTextColor(element.style.color);
-				
-				// Add background for code blocks
-				if (element.type === 'code' && element.style.backgroundColor) {
-					const textWidth = paper.width - marginLeft - marginRight - 20; // Account for padding
-					const textHeight = (element.content.split('\n').length * element.style.fontSize * element.style.lineHeight * 25.4) / 72;
-					
-					pdf.setFillColor(element.style.backgroundColor);
-					pdf.rect(marginLeft, yPosition - 5, textWidth, textHeight + 10, 'F');
+
+				if (element.type === 'code') {
+					// background box
+					const approxLines = pdf.splitTextToSize(stripInlineHtml(element.content), textFrameWidth - 2 * padMm);
+					const approxLH = element.style.fontSize * element.style.lineHeight * MM_PER_PT;
+					const approxBgH = (approxLines.length * approxLH) + 2 * padMm;
+					pdf.setFillColor(element.style.backgroundColor as any);
+					pdf.rect(marginLeft, yPosition - padMm, textFrameWidth, approxBgH, 'F');
+
+					// actual highlighted text drawing
+					const consumed = drawHighlightedCodeBlock(pdf, marginLeft, yPosition, textFrameWidth, element);
+
+					// border (optional)
+					pdf.setDrawColor(codeBorderColor);
+					pdf.rect(marginLeft, yPosition - padMm, textFrameWidth, Math.max(approxBgH, consumed + padMm), 'S');
+
+					yPosition += Math.max(approxBgH, consumed + padMm);
+					yPosition += mbMm;
+					continue;
 				}
-				
-				// Add border for blockquotes
+
+				// Blockquote left rule
 				if (element.type === 'blockquote' && element.style.borderLeft) {
+					const plain = stripInlineHtml(element.content);
+					const lines = pdf.splitTextToSize(plain, textFrameWidth - padMm * 2);
+					const lineHeightMm = element.style.fontSize * element.style.lineHeight * MM_PER_PT;
+					const contentH = (lines.length * lineHeightMm);
 					pdf.setDrawColor('#ddd');
-					pdf.setLineWidth(1);
-					pdf.line(marginLeft - 2, yPosition, marginLeft - 2, yPosition + 20);
+					pdf.setLineWidth(0.5);
+					pdf.line(marginLeft - 2, yPosition, marginLeft - 2, yPosition + contentH);
 				}
-				
-				// Add text content
-				const textWidth = paper.width - marginLeft - marginRight - (element.style.padding || 0) * 2;
-				const lines = pdf.splitTextToSize(element.content, textWidth);
-				
-				pdf.text(lines, marginLeft + (element.style.padding || 0), yPosition);
-				
-				// Update y position
-				const lineHeight = (element.style.fontSize * element.style.lineHeight * 25.4) / 72;
-				yPosition += lines.length * lineHeight + element.style.marginBottom;
+
+				// Plain text (strip inline HTML so no raw tags appear)
+				const plain = stripInlineHtml(element.content);
+				const lines = pdf.splitTextToSize(plain, textFrameWidth - padMm * 2);
+				pdf.text(lines, marginLeft + padMm, yPosition);
+
+				const lineHeightMm = element.style.fontSize * element.style.lineHeight * MM_PER_PT;
+				yPosition += (lines.length * lineHeightMm) + mbMm;
 			}
 
-			// Add logo to each page if provided
+			// Add logo per page
 			if (logoFile) {
 				try {
 					const logoDataUrl = await fileToDataURL(logoFile);
-					const logoSize = 20; // 20mm
-					
-					let logoX: number, logoY: number;
+					const logoSize = 20; // mm
+					let logoX = marginLeft + 5;
+					let logoY = marginTop + 5;
+
 					switch (logoPosition) {
-						case 'top-left':
-							logoX = marginLeft + 5;
-							logoY = marginTop + 5;
-							break;
 						case 'top-right':
-							logoX = paper.width - marginRight - logoSize - 5;
-							logoY = marginTop + 5;
-							break;
+							{ logoX = paper.width - marginRight - logoSize - 5; logoY = marginTop + 5; } break;
 						case 'bottom-left':
-							logoX = marginLeft + 5;
-							logoY = paper.height - marginBottom - logoSize - 5;
-							break;
+							{ logoX = marginLeft + 5; logoY = paper.height - marginBottom - logoSize - 5; } break;
 						case 'bottom-right':
-							logoX = paper.width - marginRight - logoSize - 5;
-							logoY = paper.height - marginBottom - logoSize - 5;
-							break;
+							{ logoX = paper.width - marginRight - logoSize - 5; logoY = paper.height - marginBottom - logoSize - 5; } break;
 					}
-					
-					// Add semi-transparent white background behind logo
-					pdf.setFillColor(255, 255, 255);
-					pdf.setGState(new pdf.GState({opacity: 0.8}));
-					pdf.roundedRect(logoX - 2, logoY - 2, logoSize + 4, logoSize + 4, 2, 2, 'F');
-					
-					// Reset opacity and add logo
-					pdf.setGState(new pdf.GState({opacity: 1}));
+
+					if ((pdf as any).GState) {
+						pdf.setFillColor(255, 255, 255);
+						pdf.setGState(new (pdf as any).GState({ opacity: 0.8 }));
+						pdf.roundedRect(logoX - 2, logoY - 2, logoSize + 4, logoSize + 4, 2, 2, 'F');
+						pdf.setGState(new (pdf as any).GState({ opacity: 1 }));
+					}
+
 					pdf.addImage(logoDataUrl, 'PNG', logoX, logoY, logoSize, logoSize);
 				} catch (error) {
 					console.error('Error adding logo:', error);
@@ -638,7 +897,6 @@ Visit [Google](https://google.com) for more information.
 			}
 		}
 
-		// Download the PDF
 		pdf.save('markdown-document.pdf');
 	}
 
@@ -646,11 +904,8 @@ Visit [Google](https://google.com) for more information.
 		return new Promise((resolve, reject) => {
 			const reader = new FileReader();
 			reader.onload = (event) => {
-				if (event.target?.result) {
-					resolve(event.target.result as string);
-				} else {
-					reject(new Error('Failed to read file'));
-				}
+				if (event.target?.result) resolve(event.target.result as string);
+				else reject(new Error('Failed to read file'));
 			};
 			reader.onerror = reject;
 			reader.readAsDataURL(file);
@@ -658,7 +913,7 @@ Visit [Google](https://google.com) for more information.
 	}
 
 	// Update preview when colors change
-	$: if (codeBackgroundColor || codeBorderColor || codeTextColor) {
+	$: if (codeBackgroundColor || codeBorderColor || codeTextColor || marginTop || marginRight || marginBottom || marginLeft || paperSize) {
 		updatePreview().catch(console.error);
 	}
 </script>
@@ -679,13 +934,7 @@ Visit [Google](https://google.com) for more information.
 				<h4>Logo Settings</h4>
 				<div class="form-group">
 					<label for="logo-upload">Logo Image:</label>
-					<input
-						id="logo-upload"
-						type="file"
-						accept="image/*"
-						on:change={handleLogoUpload}
-						class="file-input"
-					/>
+					<input id="logo-upload" type="file" accept="image/*" on:change={handleLogoUpload} class="file-input" />
 				</div>
 				<div class="form-group">
 					<label for="logo-position">Logo Position:</label>
@@ -766,9 +1015,7 @@ Visit [Google](https://google.com) for more information.
 				</div>
 			</div>
 
-			<button on:click={generatePDF} class="generate-btn">
-				Generate & Download PDF
-			</button>
+			<button on:click={generatePDFFromPreview} class="generate-btn">Generate & Download PDF</button>
 		</div>
 
 		<!-- Editor and Preview -->
@@ -787,10 +1034,7 @@ Visit [Google](https://google.com) for more information.
 </div>
 
 <style>
-	.markdown-pdf-tool {
-		max-width: 100%;
-		margin: 0 auto;
-	}
+	.markdown-pdf-tool { max-width: 100%; margin: 0 auto; }
 
 	.tool-header {
 		text-align: center;
@@ -800,19 +1044,8 @@ Visit [Google](https://google.com) for more information.
 		border-radius: 8px;
 		border: 1px solid var(--border-color);
 	}
-
-	.tool-header h2 {
-		color: var(--text-primary);
-		margin: 0 0 0.5rem 0;
-		font-size: 1.75rem;
-		font-weight: 600;
-	}
-
-	.tool-header p {
-		color: var(--text-secondary);
-		margin: 0;
-		font-size: 1rem;
-	}
+	.tool-header h2 { color: var(--text-primary); margin: 0 0 0.5rem 0; font-size: 1.75rem; font-weight: 600; }
+	.tool-header p { color: var(--text-secondary); margin: 0; font-size: 1rem; }
 
 	.tool-content {
 		display: grid;
@@ -829,7 +1062,6 @@ Visit [Google](https://google.com) for more information.
 		height: fit-content;
 		overflow-y: auto;
 	}
-
 	.config-panel h3 {
 		color: var(--text-primary);
 		margin: 0 0 1.5rem 0;
@@ -838,218 +1070,51 @@ Visit [Google](https://google.com) for more information.
 		border-bottom: 1px solid var(--border-color);
 		padding-bottom: 0.5rem;
 	}
+	.config-section { margin-bottom: 1.5rem; }
+	.config-section h4 { color: var(--text-primary); margin: 0 0 1rem 0; font-size: 1rem; font-weight: 500; }
+	.form-group { margin-bottom: 1rem; }
+	.form-group label { display: block; color: var(--text-secondary); font-size: 0.9rem; font-weight: 500; margin-bottom: 0.5rem; }
 
-	.config-section {
-		margin-bottom: 1.5rem;
-	}
-
-	.config-section h4 {
-		color: var(--text-primary);
-		margin: 0 0 1rem 0;
-		font-size: 1rem;
-		font-weight: 500;
-	}
-
-	.form-group {
-		margin-bottom: 1rem;
-	}
-
-	.form-group label {
-		display: block;
-		color: var(--text-secondary);
-		font-size: 0.9rem;
-		font-weight: 500;
-		margin-bottom: 0.5rem;
-	}
-
-	.file-input,
-	.select-input,
-	.number-input {
-		width: 100%;
-		padding: 0.75rem;
-		border: 1px solid var(--border-color);
-		border-radius: 6px;
-		background: var(--surface-background);
-		color: var(--text-primary);
-		font-size: 0.9rem;
+	.file-input, .select-input, .number-input {
+		width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px;
+		background: var(--surface-background); color: var(--text-primary); font-size: 0.9rem;
 		transition: border-color 0.2s ease;
 	}
+	.file-input:focus, .select-input:focus, .number-input:focus { outline: none; border-color: var(--primary); }
+	.color-input { width: 100%; height: 40px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--surface-background); cursor: pointer; }
 
-	.file-input:focus,
-	.select-input:focus,
-	.number-input:focus {
-		outline: none;
-		border-color: var(--primary);
-	}
+	.checkbox-label { display: flex; align-items: center; cursor: pointer; color: var(--text-primary); font-size: 0.9rem; }
+	.checkbox-input { margin-right: 0.5rem; width: 16px; height: 16px; cursor: pointer; }
+	.checkbox-text { user-select: none; }
+	.toc-preview { margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); font-style: italic; }
 
-	.color-input {
-		width: 100%;
-		height: 40px;
-		border: 1px solid var(--border-color);
-		border-radius: 6px;
-		background: var(--surface-background);
-		cursor: pointer;
-	}
-
-	.checkbox-label {
-		display: flex;
-		align-items: center;
-		cursor: pointer;
-		color: var(--text-primary);
-		font-size: 0.9rem;
-	}
-
-	.checkbox-input {
-		margin-right: 0.5rem;
-		width: 16px;
-		height: 16px;
-		cursor: pointer;
-	}
-
-	.checkbox-text {
-		user-select: none;
-	}
-
-	.toc-preview {
-		margin-top: 0.5rem;
-		font-size: 0.8rem;
-		color: var(--text-secondary);
-		font-style: italic;
-	}
-
-	.margin-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 0.5rem;
-	}
+	.margin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 
 	.generate-btn {
-		width: 100%;
-		padding: 1rem;
+		width: 100%; padding: 1rem;
 		background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-		color: white;
-		border: none;
-		border-radius: 8px;
-		font-size: 1rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all 0.2s ease;
-		margin-top: 1rem;
+		color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600;
+		cursor: pointer; transition: all 0.2s ease; margin-top: 1rem;
 	}
+	.generate-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); }
 
-	.generate-btn:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+	.editor-preview { display: grid; grid-template-rows: 1fr 1fr; gap: 1rem; height: 100%; }
+	.editor-container, .preview-container {
+		background: var(--card-background); border: 1px solid var(--border-color); border-radius: 8px;
+		padding: 1rem; overflow: hidden; display: flex; flex-direction: column;
 	}
+	.editor-container h3, .preview-container h3 {
+		color: var(--text-primary); margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600;
+		border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;
+	}
+	.editor { flex: 1; overflow: auto; border: 1px solid var(--border-color); border-radius: 6px; }
 
-	.editor-preview {
-		display: grid;
-		grid-template-rows: 1fr 1fr;
-		gap: 1rem;
-		height: 100%;
-	}
-
-	.editor-container,
-	.preview-container {
-		background: var(--card-background);
-		border: 1px solid var(--border-color);
-		border-radius: 8px;
-		padding: 1rem;
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
-	}
-
-	.editor-container h3,
-	.preview-container h3 {
-		color: var(--text-primary);
-		margin: 0 0 1rem 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		border-bottom: 1px solid var(--border-color);
-		padding-bottom: 0.5rem;
-	}
-
-	.editor {
-		flex: 1;
-		overflow: auto;
-		border: 1px solid var(--border-color);
-		border-radius: 6px;
-	}
-
-	.preview {
-		flex: 1;
-		overflow: auto;
-		padding: 1rem;
-		background: var(--surface-background);
-		border: 1px solid var(--border-color);
-		border-radius: 6px;
-		color: var(--text-primary);
-		line-height: 1.6;
-	}
-
-	.preview :global(h1),
-	.preview :global(h2),
-	.preview :global(h3),
-	.preview :global(h4),
-	.preview :global(h5),
-	.preview :global(h6) {
-		color: var(--text-primary);
-		margin-top: 1.5rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.preview :global(h1) {
-		font-size: 1.75rem;
-		border-bottom: 2px solid var(--border-color);
-		padding-bottom: 0.5rem;
-	}
-
-	.preview :global(h2) {
-		font-size: 1.5rem;
-		border-bottom: 1px solid var(--border-color);
-		padding-bottom: 0.3rem;
-	}
-
-	.preview :global(code) {
-		background: var(--surface-background);
-		padding: 0.2rem 0.4rem;
-		border-radius: 3px;
-		font-family: 'Courier New', monospace;
-		font-size: 0.9em;
-		border: 1px solid var(--border-color);
-	}
-
-	.preview :global(blockquote) {
-		border-left: 4px solid var(--primary);
-		margin: 1rem 0;
-		padding: 0.5rem 1rem;
-		background: var(--surface-background);
-		font-style: italic;
-		color: var(--text-secondary);
-	}
-
-	.preview :global(a) {
-		color: var(--primary);
-		text-decoration: none;
-	}
-
-	.preview :global(a:hover) {
-		text-decoration: underline;
-	}
+	.preview { flex: 1; overflow: auto; padding: 1rem; background: var(--surface-background); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); line-height: 1.6; }
 
 	@media (max-width: 1024px) {
-		.tool-content {
-			grid-template-columns: 1fr;
-			grid-template-rows: auto 1fr;
-		}
-
-		.config-panel {
-			height: auto;
-		}
-
-		.editor-preview {
-			grid-template-rows: 300px 1fr;
-		}
+		.tool-content { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+		.config-panel { height: auto; }
+		.editor-preview { grid-template-rows: 300px 1fr; }
 	}
 </style>
+
