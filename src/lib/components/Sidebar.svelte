@@ -12,7 +12,8 @@
 		{ id: 'css-minifier', name: 'CSS Minifier' },
 		{ id: 'json-formatter', name: 'JSON Formatter' },
 		{ id: 'sort', name: 'Text Sorter' },
-		{ id: 'markdown-to-pdf', name: 'Markdown to PDF' }
+		{ id: 'markdown-to-pdf', name: 'Markdown to PDF (Canvas)' },
+		{ id: 'markdown-to-pdf-simple', name: 'Markdown to PDF' }
 	];
 
 	function switchTool(toolId: string) {

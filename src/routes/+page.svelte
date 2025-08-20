@@ -9,6 +9,7 @@
 	import JSONFormatterTool from '$lib/components/JSONFormatterTool.svelte';
 	import SortTool from '$lib/components/SortTool.svelte';
 	import MarkdownToPDFTool from '$lib/components/MarkdownToPDFTool.svelte';
+	import MarkdownToPDFSimple from '$lib/components/MarkdownToPDFSimple.svelte';
 
 	let activeTool = 'diff';
 
@@ -42,6 +43,8 @@
 			<SortTool />
 		{:else if activeTool === 'markdown-to-pdf'}
 			<MarkdownToPDFTool />
+		{:else if activeTool === 'markdown-to-pdf-simple'}
+			<MarkdownToPDFSimple />
 		{/if}
 	</main>
 </div>

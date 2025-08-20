@@ -721,6 +721,12 @@ async function generatePDFFromPreview() {
   const paper = paperSizes[paperSize];
   const pdf = new jsPDF({ unit: 'mm', format: [paper.width, paper.height] });
 
+  // Add TOC if enabled
+  let tocAdded = false;
+  if (includeTOC && headers.length > 0) {
+    tocAdded = generateTOCPage(pdf, paper);
+  }
+
   // Grab all rendered preview "pages"
   const pages = Array.from(previewElement?.querySelectorAll<HTMLElement>('.pdf-page') || []);
   if (!pages.length) {
@@ -732,7 +738,7 @@ async function generatePDFFromPreview() {
   const scale = Math.max(2, Math.floor(window.devicePixelRatio || 2));
 
   for (let i = 0; i < pages.length; i++) {
-    if (i > 0) pdf.addPage();
+    if (i > 0 || tocAdded) pdf.addPage();
 
     // We only snapshot the inner content box (the margins are real PDF margins)
     const content = pages[i].querySelector<HTMLElement>('.pdf-content');
@@ -920,8 +926,17 @@ async function generatePDFFromPreview() {
 
 <div class="markdown-pdf-tool">
 	<div class="tool-header">
-		<h2>Markdown to PDF Converter</h2>
+		<h2>Markdown to PDF Converter (Canvas)</h2>
 		<p>Write markdown and convert it to a customized PDF document</p>
+		<div class="warning-box">
+			<strong>⚠️ Canvas Mode Limitations:</strong>
+			<ul>
+				<li>May have text rendering issues in some browsers</li>
+				<li>Large documents can cause performance problems</li>
+				<li>Complex layouts might not convert perfectly</li>
+				<li>For simple documents, use the text-based converter instead</li>
+			</ul>
+		</div>
 	</div>
 
 	<div class="tool-content">
@@ -1045,7 +1060,20 @@ async function generatePDFFromPreview() {
 		border: 1px solid var(--border-color);
 	}
 	.tool-header h2 { color: var(--text-primary); margin: 0 0 0.5rem 0; font-size: 1.75rem; font-weight: 600; }
-	.tool-header p { color: var(--text-secondary); margin: 0; font-size: 1rem; }
+	.tool-header p { color: var(--text-secondary); margin: 0 0 1rem 0; font-size: 1rem; }
+	
+	.warning-box {
+		background: #fff3cd;
+		border: 1px solid #ffeaa7;
+		border-radius: 6px;
+		padding: 1rem;
+		margin-top: 1rem;
+		color: #856404;
+		font-size: 0.9rem;
+	}
+	.warning-box strong { color: #6c5700; margin-bottom: 0.5rem; display: block; }
+	.warning-box ul { margin: 0.5rem 0 0 0; padding-left: 1.2rem; }
+	.warning-box li { margin-bottom: 0.3rem; }
 
 	.tool-content {
 		display: grid;
