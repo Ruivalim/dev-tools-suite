@@ -101,6 +101,14 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 		};
 	}
 
+	interface LogoReservedSpace {
+		x: number;      // mm
+		y: number;      // mm  
+		width: number;  // mm
+		height: number; // mm
+		position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+	}
+
 	function parseMarkdownToElements(): TextElement[] {
 		const elements: TextElement[] = [];
 		const lines = markdownText.split('\n');
@@ -194,24 +202,41 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 			}
 			// Regular text
 			else {
-				// Process basic inline markdown formatting by removing markup
-				let processedText = line
-					.replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting (handled via fontWeight)
-					.replace(/\*(.*?)\*/g, '$1')     // Remove italic formatting
-					.replace(/~~(.*?)~~/g, '$1');    // Remove strikethrough formatting
+				// Check if it's just &nbsp; for blank line
+				if (line.trim() === '&nbsp;') {
+					elements.push({
+						type: 'text',
+						content: ' ', // Single space to create blank line
+						style: {
+							fontSize: 11,
+							fontWeight: 'normal',
+							lineHeight: 1.6,
+							marginTop: 6,
+							marginBottom: 6,
+							color: '#000'
+						}
+					});
+				} else {
+					// Process basic inline markdown formatting by removing markup
+					let processedText = line
+						.replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold formatting (handled via fontWeight)
+						.replace(/\*(.*?)\*/g, '$1')     // Remove italic formatting
+						.replace(/~~(.*?)~~/g, '$1')     // Remove strikethrough formatting
+						.replace(/&nbsp;/g, ' ');        // Convert &nbsp; to regular space
 
-				elements.push({
-					type: 'text',
-					content: processedText,
-					style: {
-						fontSize: 11,
-						fontWeight: 'normal',
-						lineHeight: 1.6,
-						marginTop: 6,
-						marginBottom: 6,
-						color: '#000'
-					}
-				});
+					elements.push({
+						type: 'text',
+						content: processedText,
+						style: {
+							fontSize: 11,
+							fontWeight: 'normal',
+							lineHeight: 1.6,
+							marginTop: 6,
+							marginBottom: 6,
+							color: '#000'
+						}
+					});
+				}
 			}
 
 			i++;
@@ -231,12 +256,34 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 		}
 	}
 
-	function simulatePageLayout(): Array<{elements: TextElement[], page: number}> {
+	function calculateLogoSpace(): LogoReservedSpace | null {
+		if (!logoFile) return null;
+		
+		const paper = paperSizes[paperSize];
+		const logoSize = 20; // mm
+		const padding = 5; // mm around logo
+		
+		switch (logoPosition) {
+			case 'top-left':
+				return { x: marginLeft, y: marginTop, width: logoSize + padding, height: logoSize + padding, position: 'top-left' };
+			case 'top-right':
+				return { x: paper.width - marginRight - logoSize - padding, y: marginTop, width: logoSize + padding, height: logoSize + padding, position: 'top-right' };
+			case 'bottom-left':
+				return { x: marginLeft, y: paper.height - marginBottom - logoSize - padding, width: logoSize + padding, height: logoSize + padding, position: 'bottom-left' };
+			case 'bottom-right':
+				return { x: paper.width - marginRight - logoSize - padding, y: paper.height - marginBottom - logoSize - padding, width: logoSize + padding, height: logoSize + padding, position: 'bottom-right' };
+			default:
+				return null;
+		}
+	}
+
+	function simulatePageLayout(): Array<{elements: TextElement[], page: number, logoSpace?: LogoReservedSpace}> {
 		const paper = paperSizes[paperSize];
 		const tmp = new jsPDF({ unit: 'mm', format: [paper.width, paper.height] });
 
-		const pages: Array<{elements: TextElement[], page: number}> = [];
+		const pages: Array<{elements: TextElement[], page: number, logoSpace?: LogoReservedSpace}> = [];
 		const elements = parseMarkdownToElements();
+		const logoSpace = calculateLogoSpace();
 
 		extractHeadersFromElements(elements);
 
@@ -246,7 +293,7 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 		let pageNo = includeTOC ? 2 : 1;
 
 		const pushPage = () => {
-			if (current.length) pages.push({ elements: current, page: pageNo });
+			if (current.length) pages.push({ elements: current, page: pageNo, logoSpace });
 			current = [];
 			y = marginTop;
 			pageNo += 1;
@@ -258,10 +305,40 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 			tmp.setFont('helvetica', isBold ? 'bold' : 'normal');
 
 			const padMm = toMmFromPt(el.style.padding || 0);
-			const widthMm = contentWidthMm - 2 * padMm;
+			let widthMm = contentWidthMm - 2 * padMm;
+
+			// Check if this specific text element would overlap with logo
+			let adjustForLogo = false;
+			if (logoSpace) {
+				const elementStartY = y + toMmFromPt(el.style.marginTop);
+				// First, check with normal width to see how many lines we'd have
+				const tempLines = tmp.splitTextToSize(el.content, widthMm);
+				const lineHeightMm = el.style.fontSize * el.style.lineHeight * MM_PER_PT;
+				const elementEndY = elementStartY + (tempLines.length * lineHeightMm);
+				
+				// Only adjust if this element actually overlaps with logo vertically
+				adjustForLogo = elementStartY < logoSpace.y + logoSpace.height && elementEndY > logoSpace.y;
+			}
+
+			// Adjust width only if there's actual overlap
+			if (adjustForLogo && logoSpace) {
+				if (logoSpace.position === 'top-left' || logoSpace.position === 'bottom-left') {
+					// Logo is on left, reduce content width and move content right
+					const logoRight = logoSpace.x + logoSpace.width;
+					if (logoRight > marginLeft) {
+						widthMm = paper.width - logoRight - marginRight - 2 * padMm;
+					}
+				} else if (logoSpace.position === 'top-right' || logoSpace.position === 'bottom-right') {
+					// Logo is on right, just reduce content width
+					const logoLeft = logoSpace.x;
+					if (logoLeft < paper.width - marginRight) {
+						widthMm = logoLeft - marginLeft - 2 * padMm;
+					}
+				}
+			}
 
 			const plain = el.content;
-			const lines = tmp.splitTextToSize(plain, widthMm);
+			const lines = tmp.splitTextToSize(plain, Math.max(widthMm, 50)); // Minimum width to avoid errors
 			const lineHeightMm = el.style.fontSize * el.style.lineHeight * MM_PER_PT;
 
 			const blockHeightMm =
@@ -271,11 +348,13 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 
 			const requiredMm = blockHeightMm;
 
-			const shouldBreakBefore =
-				el.type === 'header' ||
-				(current.length && current[current.length - 1].type === 'header');
+			// Check for bottom logo collision and adjust bottom margin
+			let availableHeight = paper.height - marginBottom;
+			if (logoSpace && (logoSpace.position === 'bottom-left' || logoSpace.position === 'bottom-right')) {
+				availableHeight = Math.min(availableHeight, logoSpace.y);
+			}
 
-			if ((y + requiredMm > (paper.height - marginBottom)) && current.length) {
+			if ((y + requiredMm > availableHeight) && current.length) {
 				pushPage();
 			}
 
@@ -288,7 +367,7 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 			y += requiredMm;
 		}
 
-		if (current.length) pages.push({ elements: current, page: pageNo });
+		if (current.length) pages.push({ elements: current, page: pageNo, logoSpace });
 		return pages;
 	}
 
@@ -312,6 +391,25 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 			">`;
 
 			previewHtml += `<div style="position: absolute; top: 5px; right: 10px; font-size: 10px; color: #666;">Page ${page.page}</div>`;
+
+			// Show logo placeholder in preview
+			if (page.logoSpace && logoFile) {
+				previewHtml += `<div style="
+					position: absolute;
+					left: ${page.logoSpace.x}mm;
+					top: ${page.logoSpace.y}mm;
+					width: 20mm;
+					height: 20mm;
+					background: rgba(0, 123, 255, 0.2);
+					border: 2px dashed #007bff;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					font-size: 8px;
+					color: #007bff;
+					font-weight: bold;
+				">LOGO</div>`;
+			}
 
 			previewHtml += `<div class="pdf-content" style="
 				position: absolute;
@@ -430,12 +528,48 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 			if (pageIndex > 0 || tocAdded) pdf.addPage();
 
 			let yPosition = marginTop;
+			const logoSpace = page.logoSpace;
 
 			for (const element of page.elements) {
 				const mtMm = toMmFromPt(element.style.marginTop);
 				const mbMm = toMmFromPt(element.style.marginBottom);
 				const padMm = toMmFromPt(element.style.padding || 0);
-				const textFrameWidth = paper.width - marginLeft - marginRight;
+				let textFrameWidth = paper.width - marginLeft - marginRight;
+				let textX = marginLeft + padMm;
+
+				// Check if this specific element would overlap with logo (same as layout simulation)
+				let adjustForLogo = false;
+				if (logoSpace) {
+					const elementStartY = yPosition + mtMm;
+					// First check with normal width to see element size
+					pdf.setFontSize(element.style.fontSize);
+					const isBold = element.style.fontWeight === 'bold' || (element.type === 'header' && element.style.fontWeight !== 'normal');
+					pdf.setFont('helvetica', isBold ? 'bold' : 'normal');
+					const tempLines = pdf.splitTextToSize(element.content, textFrameWidth - padMm * 2);
+					const lineHeightMm = element.style.fontSize * element.style.lineHeight * MM_PER_PT;
+					const elementEndY = elementStartY + (tempLines.length * lineHeightMm);
+					
+					// Only adjust if this element actually overlaps with logo vertically
+					adjustForLogo = elementStartY < logoSpace.y + logoSpace.height && elementEndY > logoSpace.y;
+				}
+
+				// Adjust text positioning only if there's actual overlap
+				if (adjustForLogo && logoSpace) {
+					if (logoSpace.position === 'top-left' || logoSpace.position === 'bottom-left') {
+						// Logo is on left, move text right
+						const logoRight = logoSpace.x + logoSpace.width;
+						if (logoRight > marginLeft) {
+							textX = logoRight;
+							textFrameWidth = paper.width - logoRight - marginRight;
+						}
+					} else if (logoSpace.position === 'top-right' || logoSpace.position === 'bottom-right') {
+						// Logo is on right, reduce text width
+						const logoLeft = logoSpace.x;
+						if (logoLeft < paper.width - marginRight) {
+							textFrameWidth = logoLeft - marginLeft;
+						}
+					}
+				}
 
 				yPosition += mtMm;
 
@@ -452,34 +586,26 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 					const contentH = (lines.length * lineHeightMm);
 					pdf.setDrawColor('#ddd');
 					pdf.setLineWidth(0.5);
-					pdf.line(marginLeft - 2, yPosition, marginLeft - 2, yPosition + contentH);
+					pdf.line(textX - 2, yPosition, textX - 2, yPosition + contentH);
 				}
 
 				// Plain text
-				const lines = pdf.splitTextToSize(element.content, textFrameWidth - padMm * 2);
-				pdf.text(lines, marginLeft + padMm, yPosition);
+				const lines = pdf.splitTextToSize(element.content, Math.max(textFrameWidth - padMm * 2, 50));
+				pdf.text(lines, textX, yPosition);
 
 				const lineHeightMm = element.style.fontSize * element.style.lineHeight * MM_PER_PT;
 				yPosition += (lines.length * lineHeightMm) + mbMm;
 			}
 
-			// Add logo per page
-			if (logoFile) {
+			// Add logo per page using the calculated space
+			if (logoFile && logoSpace) {
 				try {
 					const logoDataUrl = await fileToDataURL(logoFile);
 					const logoSize = 20; // mm
-					let logoX = marginLeft + 5;
-					let logoY = marginTop + 5;
+					const logoX = logoSpace.x;
+					const logoY = logoSpace.y;
 
-					switch (logoPosition) {
-						case 'top-right':
-							{ logoX = paper.width - marginRight - logoSize - 5; logoY = marginTop + 5; } break;
-						case 'bottom-left':
-							{ logoX = marginLeft + 5; logoY = paper.height - marginBottom - logoSize - 5; } break;
-						case 'bottom-right':
-							{ logoX = paper.width - marginRight - logoSize - 5; logoY = paper.height - marginBottom - logoSize - 5; } break;
-					}
-
+					// Add subtle background for logo
 					if ((pdf as any).GState) {
 						pdf.setFillColor(255, 255, 255);
 						pdf.setGState(new (pdf as any).GState({ opacity: 0.8 }));
@@ -699,8 +825,14 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 	}
 	.generate-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); }
 
-	.editor-preview { display: grid; grid-template-rows: 1fr 1fr; gap: 1rem; height: 100%; }
-	.editor-container, .preview-container {
+	.editor-preview { display: grid; grid-template-rows: auto 1fr; gap: 1rem; height: 100%; }
+	.editor-container {
+		background: var(--card-background); border: 1px solid var(--border-color); border-radius: 8px;
+		padding: 1rem; overflow: visible; display: flex; flex-direction: column;
+		height: fit-content;
+	}
+	
+	.preview-container {
 		background: var(--card-background); border: 1px solid var(--border-color); border-radius: 8px;
 		padding: 1rem; overflow: hidden; display: flex; flex-direction: column;
 	}
@@ -708,7 +840,19 @@ Text with **bold**, *italic*, and ~~strikethrough~~ all in one paragraph.
 		color: var(--text-primary); margin: 0 0 1rem 0; font-size: 1.1rem; font-weight: 600;
 		border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;
 	}
-	.editor { flex: 1; overflow: auto; border: 1px solid var(--border-color); border-radius: 6px; }
+	.editor { 
+		min-height: 200px;
+		border: 1px solid var(--border-color); 
+		border-radius: 6px; 
+	}
+	
+	:global(.editor .cm-editor) {
+		min-height: 200px !important;
+	}
+	
+	:global(.editor .cm-content) {
+		min-height: 200px !important;
+	}
 
 	.preview { flex: 1; overflow: auto; padding: 1rem; background: var(--surface-background); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); line-height: 1.6; }
 
